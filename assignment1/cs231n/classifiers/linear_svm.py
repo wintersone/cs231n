@@ -38,7 +38,7 @@ def svm_loss_naive(W, X, y, reg):
         dW[:, j] += X[i]
         num_mismatch += 1   
     dW[:, y[i]] += -1 * num_mismatch * X[i]
-
+  
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
