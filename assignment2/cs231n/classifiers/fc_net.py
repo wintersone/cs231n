@@ -179,9 +179,9 @@ class FullyConnectedNet(object):
         layers = np.hstack((input_dim, hidden_dims, num_classes))
         for i in range(self.num_layers):
           self.params['W'+str(i+1)] = np.random.randn(layers[i],layers[i+1]) * weight_scale
-          self.params['b'+str(i+1)] = np.random.randn(layers[i+1])
-          if self.normalization in ['batchnorm','layernorm'] and i < hidden_dims:
-            self.params['gamma'+str(i+1)] = np.zeros(layers[i+1])
+          self.params['b'+str(i+1)] = np.zeros(layers[i+1])
+          if self.normalization in ['batchnorm','layernorm'] and i < (self.num_layers - 1):
+            self.params['gamma'+str(i+1)] = np.ones(layers[i+1])
             self.params['beta'+str(i+1)] = np.zeros(layers[i+1])
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -248,10 +248,15 @@ class FullyConnectedNet(object):
         for depth in range(self.num_layers -1):
           W = self.params['W'+str(depth+1)]
           b = self.params['b'+str(depth+1)]
-          
-          scores, cache = affine_relu_forward(scores, W, b)
-          caches.append(cache)
-
+          if self.normalization=='batchnorm':
+            scores, cache = affine_bn_relu_forward(scores,W,b,self.params['gamma'+str(depth + 1)],self.params['beta'+str(depth+1)],self.bn_params[depth])
+            caches.append(cache)
+          elif self.normalization=='layernorm':
+            scores, cache = affine_ln_relu_forward(scores,W,b,self.params['gamma'+str(depth + 1)],self.params['beta'+str(depth+1)],self.bn_params[depth])
+            caches.append(cache)
+          else:
+            scores, cache = affine_relu_forward(scores, W, b)
+            caches.append(cache)
           reg_loss += 0.5 * self.reg * np.sum(W ** 2)
         depth += 1
         W = self.params['W'+str(depth+1)]
@@ -292,10 +297,14 @@ class FullyConnectedNet(object):
         depth = depth - 1
 
         while depth >= 0:
-          dout, grads['W'+str(depth+1)], grads['b'+str(depth+1)] = affine_relu_backward(dout, caches.pop())
+          if self.normalization=='batchnorm':
+            dout, grads['W'+str(depth+1)], grads['b'+str(depth+1)] , grads['gamma'+str(depth + 1)],grads['beta'+str(depth+1)] = affine_bn_relu_backward(dout, caches.pop())
+          elif self.normalization=='layernorm':
+            dout, grads['W'+str(depth+1)], grads['b'+str(depth+1)] , grads['gamma'+str(depth + 1)],grads['beta'+str(depth+1)] = affine_ln_relu_backward(dout, caches.pop())
+          else:
+            dout, grads['W'+str(depth+1)], grads['b'+str(depth+1)] = affine_relu_backward(dout, caches.pop())
           grads['W'+str(depth+1)] += self.reg * self.params['W'+str(depth+1)]
           depth = depth - 1
-
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
