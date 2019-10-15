@@ -1,0 +1,4 @@
+coco_captioning/
+*.index
+*.npz
+*.data-00000-of-00001
