@@ -141,9 +141,22 @@ class CaptioningRNN(object):
         # in your implementation, if needed.                                       #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        h0, h0_cache= affine_forward(features, W_proj, b_proj)
+        capIn_vector, capIn_cache = word_embedding_forward(captions_in, W_embed)
+        if self.cell_type == 'rnn':
+          hidden_states, hidden_caches = rnn_forward(capIn_vector, h0, Wx, Wh, b)
+        vocab_score, vocab_cache = temporal_affine_forward(hidden_states, W_vocab, b_vocab)
+        loss, dscore = temporal_softmax_loss(vocab_score, captions_out, mask)
 
-        pass
+        '''
+        compute gradient
+        '''
 
+        dout, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dscore, vocab_cache)
+        if self.cell_type == 'rnn':
+          dout, dh0, grads["Wx"], grads["Wh"], grads["b"]  = rnn_backward(dout, hidden_caches)
+        grads["W_embed"] =  word_embedding_backward(dout, capIn_cache)
+        dout, grads["W_proj"], grads["b_proj"] = affine_backward(dh0, h0_cache)
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -211,7 +224,16 @@ class CaptioningRNN(object):
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        index = self._start * np.ones((N), dtype=np.int32)
+        h0, _ = affine_forward(features, W_proj, b_proj)
+        for i in range(max_length):
+          word_vector, _ = word_embedding_forward(index, W_embed)
+          if self.cell_type == 'rnn':
+            h0, _ = rnn_step_forward(word_vector, h0, Wx, Wh, b)
+          pred, _ = affine_forward(h0, W_vocab, b_vocab)
+          index = np.argmax(pred, axis=-1) 
+          captions[:, i] = index
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
